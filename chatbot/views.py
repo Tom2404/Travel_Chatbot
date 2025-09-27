@@ -27,3 +27,23 @@ def chat(request):
             return JsonResponse({"reply": f"Lỗi: {str(e)}"})
     else:   
         return JsonResponse({"reply": "Phương thức không hợp lệ."})
+    
+    from django.shortcuts import render
+from django.http import JsonResponse
+import json
+
+def index(request):
+    return render(request, "chatbot/index.html")
+
+def chat(request):
+    if request.method == "POST":
+        data = json.loads(request.body)
+        user_message = data.get("message", "")
+
+        # Tạm thời trả lời cứng, sau sẽ tích hợp OpenAI
+        if "Đà Nẵng" in user_message:
+            reply = "Đà Nẵng nổi tiếng với Bà Nà Hills, Cầu Rồng, biển Mỹ Khê, và các món ăn như mì Quảng, bánh tráng cuốn thịt heo."
+        else:
+            reply = "Xin chào! Tôi là chatbot du lịch. Bạn muốn tìm hiểu địa điểm nào?"
+
+        return JsonResponse({"reply": reply})
