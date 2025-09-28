@@ -1,5 +1,5 @@
 from django.shortcuts import render
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
 import json
 from openai import OpenAI
 import os
@@ -10,7 +10,12 @@ from .models import ChatHistory, Destination, Hotel, Restaurant, Attraction
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def index(request):
-    return render(request, "index.html")
+    """Trang chính của chatbot"""
+    return render(request, "chatbot/index.html")
+
+def test_view(request):
+    """Test view để debug"""
+    return HttpResponse("<h1>🎯 TEST VIEW WORKING!</h1>")
 
 def get_travel_context():
     """Lấy thông tin du lịch từ database để bổ sung context cho AI"""
@@ -55,7 +60,8 @@ PHONG CÁCH:
 - Thân thiện, nhiệt tình
 - Trả lời chi tiết nhưng dễ hiểu
 - Đưa ra gợi ý cụ thể, thực tế
-- Sử dụng emoji phù hợp để sinh động
+- Xuống dòng đúng cách, đúng chỗ
+
 
 THÔNG TIN BỔ SUNG: {travel_context}
 
