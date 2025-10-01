@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>Chatbot Du Lịch</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    #chatbox { width: 500px; height: 400px; border: 1px solid #ccc; overflow-y: scroll; padding: 10px; }
+    #userInput { width: 400px; }
+    .user { color: blue; margin: 5px 0; }
+    .bot { color: green; margin: 5px 0; }
+  </style>
+</head>
+<body>
+  <h2>🤖 Chatbot Du Lịch AI</h2>
+  <div id="chatbox"></div>
+  <input id="userInput" type="text" placeholder="Nhập câu hỏi..." onkeydown="if(event.key==='Enter'){sendMessage()}">
+  <button onclick="sendMessage()">Gửi</button>
+
+  <script>
+    async function sendMessage() {
+      const input = document.getElementById("userInput").value;
+      const chatbox = document.getElementById("chatbox");
+
+      chatbox.innerHTML += `<div class="user"><b>Bạn:</b> ${input}</div>`;
+
+      const response = await fetch("/chat/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken") },
+        body: JSON.stringify({ message: input })
+      });
+      const data = await response.json();
+
+      chatbox.innerHTML += `<div class="bot"><b>Bot:</b> ${data.reply}</div>`;
+      document.getElementById("userInput").value = "";
+      chatbox.scrollTop = chatbox.scrollHeight;
+    }
+
+    // Lấy CSRF token
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+          cookie = cookie.trim();
+          if (cookie.substring(0, name.length + 1) === (name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+  </script>
+</body>
+</html>

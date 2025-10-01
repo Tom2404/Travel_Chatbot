@@ -29,11 +29,90 @@
             color: white;
             padding: 20px;
             text-align: center;
+            position: relative;
         }
         
         .chat-header h1 {
             margin: 0;
             font-size: 1.5rem;
+        }
+        
+        .auth-section {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+        }
+        
+        .auth-section .dropdown-toggle {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            border-radius: 20px;
+            padding: 5px 15px;
+        }
+        
+        .auth-section .dropdown-toggle:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        .welcome-message {
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+        
+        .chat-controls {
+            padding: 10px 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e1e5e9;
+            display: flex;
+            gap: 10px;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .control-btn {
+            padding: 6px 12px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .control-btn:hover {
+            background: #e9ecef;
+        }
+        
+        .search-section {
+            display: none;
+            padding: 15px 20px;
+            background: #f1f3f4;
+            border-bottom: 1px solid #e1e5e9;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 8px 15px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+        
+        .search-results {
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        
+        .search-item {
+            padding: 10px;
+            border: 1px solid #e1e5e9;
+            margin-bottom: 5px;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
         }
         
         .chat-box {
@@ -196,9 +275,75 @@
 </head>
 <body>
     <div class="chat-container">
+        <!-- Chat Header with Auth -->
         <div class="chat-header">
+            {% if user.is_authenticated %}
+                <div class="auth-section">
+                    <div class="dropdown">
+                        <button class="btn dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user"></i> {{ user.username }}
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="{% url 'profile' %}">
+                                <i class="fas fa-user-cog"></i> Hồ sơ
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'user_history' %}">
+                                <i class="fas fa-history"></i> Lịch sử chat
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{% url 'logout' %}">
+                                <i class="fas fa-sign-out-alt"></i> Đăng xuất
+                            </a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="welcome-message">Xin chào, {{ user.username }}!</div>
+            {% else %}
+                <div class="auth-section">
+                    <a href="{% url 'login' %}" class="btn btn-outline-light btn-sm me-2">
+                        <i class="fas fa-sign-in-alt"></i> Đăng nhập
+                    </a>
+                    <a href="{% url 'register' %}" class="btn btn-light btn-sm">
+                        <i class="fas fa-user-plus"></i> Đăng ký
+                    </a>
+                </div>
+            {% endif %}
             <h1><i class="fas fa-globe"></i> Travel Chatbot AI</h1>
             <p class="mb-0">Trợ lý du lịch thông minh của bạn</p>
+        </div>
+
+        <!-- Chat Controls -->
+        <div class="chat-controls">
+            <div class="d-flex gap-2">
+                <button class="control-btn" onclick="toggleSearch()">
+                    <i class="fas fa-search"></i> Tìm kiếm
+                </button>
+                <button class="control-btn" onclick="clearChat()">
+                    <i class="fas fa-trash"></i> Xóa chat
+                </button>
+                <button class="control-btn" onclick="exportChat()">
+                    <i class="fas fa-download"></i> Xuất file
+                </button>
+            </div>
+            <div class="text-muted small">
+                Phản hồi: <span id="responseTime">--</span>s
+            </div>
+        </div>
+
+        <!-- Search Section -->
+        <div class="search-section" id="searchSection">
+            <div class="row">
+                <div class="col-md-6">
+                    <input type="text" class="search-input" id="destinationSearch" 
+                           placeholder="Tìm điểm đến..." onkeyup="searchDestinations()">
+                    <div class="search-results" id="destinationResults"></div>
+                </div>
+                <div class="col-md-6">
+                    <input type="text" class="search-input" id="hotelSearch" 
+                           placeholder="Tìm khách sạn..." onkeyup="searchHotels()">
+                    <div class="search-results" id="hotelResults"></div>
+                </div>
+            </div>
         </div>
         
         <div class="chat-box" id="chatbox">
@@ -343,6 +488,143 @@
                 }
             }
             return cookieValue;
+        }
+
+        // Enhanced functionality
+        let searchTimeout;
+
+        // Clear chat functionality
+        async function clearChat() {
+            if (!confirm('Bạn có chắc chắn muốn xóa toàn bộ lịch sử chat?')) return;
+            
+            try {
+                const response = await fetch('/chat/clear/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    }
+                });
+                
+                if (response.ok) {
+                    document.getElementById('chatBox').innerHTML = `
+                        <div class="welcome-message">
+                            <i class="fas fa-globe-americas" style="font-size: 2rem; color: #007bff;"></i>
+                            <h4>Chào mừng đến với Travel Chatbot AI!</h4>
+                            <p>Tôi có thể giúp bạn:</p>
+                            <ul style="text-align: left; display: inline-block;">
+                                <li>Tư vấn điểm đến du lịch</li>
+                                <li>Gợi ý khách sạn, nhà hàng</li>
+                                <li>Lập kế hoạch lịch trình</li>
+                                <li>Tính toán chi phí du lịch</li>
+                            </ul>
+                        </div>
+                    `;
+                    alert('Đã xóa lịch sử chat thành công!');
+                }
+            } catch (error) {
+                alert('Có lỗi xảy ra khi xóa chat.');
+            }
+        }
+
+        // Export chat functionality
+        function exportChat() {
+            const chatBox = document.getElementById('chatBox');
+            const messages = chatBox.querySelectorAll('.message');
+            let chatText = 'Travel Chatbot - Lịch sử chat\n';
+            chatText += '=' + '='.repeat(40) + '\n\n';
+            
+            messages.forEach(msg => {
+                const isUser = msg.classList.contains('user-message');
+                const content = msg.querySelector('.message-content').textContent;
+                chatText += `${isUser ? 'Bạn' : 'Bot'}: ${content}\n\n`;
+            });
+            
+            const blob = new Blob([chatText], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `chat_${new Date().toISOString().slice(0,10)}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Toggle search section
+        function toggleSearch() {
+            const searchSection = document.getElementById('searchSection');
+            searchSection.style.display = searchSection.style.display === 'none' || !searchSection.style.display ? 'block' : 'none';
+        }
+
+        // Search destinations
+        function searchDestinations() {
+            const query = document.getElementById('destinationSearch').value.trim();
+            if (query.length < 2) {
+                document.getElementById('destinationResults').innerHTML = '';
+                return;
+            }
+            
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(async () => {
+                try {
+                    const response = await fetch(`/api/search/destinations/?q=${encodeURIComponent(query)}`);
+                    const data = await response.json();
+                    
+                    let html = '';
+                    data.results.forEach(dest => {
+                        html += `
+                            <div class="search-item" onclick="askAboutDestination('${dest.name}')">
+                                <strong>${dest.name}</strong> - ${dest.city}, ${dest.country}<br>
+                                <small>⭐ ${dest.rating} | 💰 $${dest.average_cost}/ngày</small>
+                            </div>
+                        `;
+                    });
+                    document.getElementById('destinationResults').innerHTML = html;
+                } catch (error) {
+                    console.error('Search error:', error);
+                }
+            }, 300);
+        }
+
+        // Search hotels
+        function searchHotels() {
+            const query = document.getElementById('hotelSearch').value.trim();
+            if (query.length < 2) {
+                document.getElementById('hotelResults').innerHTML = '';
+                return;
+            }
+            
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(async () => {
+                try {
+                    const response = await fetch(`/api/search/hotels/?q=${encodeURIComponent(query)}`);
+                    const data = await response.json();
+                    
+                    let html = '';
+                    data.results.forEach(hotel => {
+                        html += `
+                            <div class="search-item" onclick="askAboutHotel('${hotel.name}')">
+                                <strong>${hotel.name}</strong> - ${hotel.destination}<br>
+                                <small>⭐ ${hotel.star_rating} sao | 💰 $${hotel.price_per_night}/đêm</small>
+                            </div>
+                        `;
+                    });
+                    document.getElementById('hotelResults').innerHTML = html;
+                } catch (error) {
+                    console.error('Search error:', error);
+                }
+            }, 300);
+        }
+
+        // Ask about destination
+        function askAboutDestination(name) {
+            document.getElementById('userInput').value = `Hãy cho tôi biết thông tin chi tiết về ${name}`;
+            sendMessage();
+        }
+
+        // Ask about hotel
+        function askAboutHotel(name) {
+            document.getElementById('userInput').value = `Hãy cho tôi biết thông tin về khách sạn ${name}`;
+            sendMessage();
         }
 
         // Focus input on load
